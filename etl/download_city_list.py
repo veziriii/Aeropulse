@@ -28,12 +28,12 @@ logging.basicConfig(
 def save_bulk_cities_data(url: str = "http://bulk.openweathermap.org/sample/city.list.json.gz"):
     """
     Downloads the gzipped city list (with city names, latitude, longitude)
-    and saves it locally.
+    and saves to DOWNLOAD_DIR
     Arg:
-    url (str): url of bulk city zip file in openwether data source
+    url (str): url of bulk city zip file in openweather data source
     
-    eturns:
-        file path of the downloaded file 
+    Returns:
+        file path of the downloaded gzip file 
     """
 
     try:
@@ -61,8 +61,8 @@ def extract_gzip_to_json(gz_path , json_path = None):
     Extracts a gzip-compressed JSON file (.gz) into a readable JSON file.
 
     Args:
-        gz_path (str): Path to the .gz file
-        json_path (str): Path where the extracted .json file will be saved.
+        gz_path : Path to the .gz file
+        json_path : Path to the returning json file 
                          If None, uses the same name as gz_path but with .json extension.
 
     Returns:
