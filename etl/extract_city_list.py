@@ -17,7 +17,7 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR")
 Path(DOWNLOAD_DIR).mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
-    level=10,
+    level=20,
     filename=LOG_FILE,
     encoding="utf-8",
     filemode="a",
