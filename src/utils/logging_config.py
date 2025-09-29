@@ -27,7 +27,7 @@ def setup_logger(log_file: str ):
 
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setLevel(logging.INFO)
 
     fmt = "%(asctime)s - %(levelname)s - %(message)s"
     formatter = logging.Formatter(fmt, datefmt="%Y-%m-%d %H:%M")

@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import gzip
 import json
-from utils.logging_config import setup_logger
+from utils import setup_logger
 
 load_dotenv()
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     gz_file = save_bulk_cities_data()
     if gz_file:
         json_file = extract_gzip_to_json(gz_file)
-        print(f"Extracted JSON saved at: {json_file}")
+        logger.info(f"Extracted JSON saved at: {json_file}")
     else:
-        print("Download failed. Check logs for details.")
+        logger.error("Download failed. Check logs for details.")
 
