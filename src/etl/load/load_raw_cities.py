@@ -30,4 +30,3 @@ else:
         f" Data insertion mismatch: file has {len(data)} records, "
         f"but collection has {count_in_db} records"
     )
-    
