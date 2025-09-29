@@ -8,7 +8,7 @@ from utils import setup_logger
 load_dotenv()
 
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR")
-logger = setuplogger("load_cities_to_mongodb.log")
+logger = setup_logger("load_cities_to_mongodb.log")
 
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client["Aeropulse"]
