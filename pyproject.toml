@@ -31,8 +31,3 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["myapp*"]
-
-[project.scripts]
-myapp-run-engine = "myapp.core.engine:run"
-myapp-api = "myapp.api.rest:start_server"
