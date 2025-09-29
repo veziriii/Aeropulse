@@ -1,5 +1,6 @@
 .venv/
 .env 
-data/logs/
+logs/
+data/
 .TODO.tasks
 *egg-info/
