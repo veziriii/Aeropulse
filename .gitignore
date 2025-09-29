@@ -4,4 +4,4 @@ logs/
 data/
 .TODO.tasks
 *egg-info/
-*.pycgit 
+__pycache__/
