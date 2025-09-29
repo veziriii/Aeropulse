@@ -2,3 +2,5 @@
 .env 
 logs/
 data/
+.TODO.tasks
+*egg-info/

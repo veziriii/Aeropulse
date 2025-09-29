@@ -1,0 +1,5 @@
+2025-09-29 13:39 - INFO - Starting download from http://bulk.openweathermap.org/sample/city.list.json.gz
+2025-09-29 13:39 - DEBUG - Starting new HTTP connection (1): bulk.openweathermap.org:80
+2025-09-29 13:39 - DEBUG - http://bulk.openweathermap.org:80 "GET /sample/city.list.json.gz HTTP/1.1" 200 4002796
+2025-09-29 13:39 - INFO - Successfully downloaded data/raw_data/city_list_json.gz (4002796 bytes)
+2025-09-29 13:39 - INFO - Extracted JSON saved at: data/raw_data/city_list_json.json
