@@ -1,13 +1,12 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Dict 
-
+from typing import List, Dict
 from pymongo import MongoClient, InsertOne
 from pymongo.errors import BulkWriteError
 from dotenv import load_dotenv
+from aeropulse.utils import setup_logger
 
-from utils import setup_logger 
 logger = setup_logger("mongo_loader.log")
 
 
@@ -18,15 +17,15 @@ def mongo_client() -> MongoClient:
     if uri:
         return MongoClient(uri)
     else:
-        raise(f"uri for mongo db is not set in .env")
+        raise ValueError("MONGO_URI is not set in .env")
 
 
 def load_json_array_to_mongo(
     file_path: str | Path,
-    collection_name:str,
-    id_field:str,
+    collection_name: str,
+    id_field: str,
     map_id_to__id: bool = True,
-    chunk_size: int = 1000,
+    chunk_size: int = 10_000,
     continue_on_error: bool = True,
 ) -> dict:
     """
@@ -46,7 +45,6 @@ def load_json_array_to_mongo(
     col = client[db_name][collection_name]
     logger.info(f"Loading {file_path} into {db_name}.{collection_name}")
 
-
     with open(file_path, "r", encoding="utf-8") as f:
         data: List[Dict] = json.load(f)
         if not isinstance(data, list):
@@ -63,7 +61,7 @@ def load_json_array_to_mongo(
             return
         try:
             res = col.bulk_write(batch_ops, ordered=False)
-            total_inserted += (res.inserted_count or 0)
+            total_inserted += res.inserted_count or 0
         except BulkWriteError as bwe:
             errs = bwe.details.get("writeErrors", [])
             dup = sum(1 for e in errs if e.get("code") == 11000)
