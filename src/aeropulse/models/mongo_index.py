@@ -1,6 +1,7 @@
 import os
 from aeropulse.utils import setup_logger
 from aeropulse.etl.load.loader import mongo_client
+from dotenv import load_dotenv
 
 
 def main():

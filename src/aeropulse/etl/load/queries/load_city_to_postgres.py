@@ -1,12 +1,10 @@
-import os
-from dotenv import load_dotenv
 from aeropulse.utils import setup_logger
 from aeropulse.etl.transform.queries import us_cities_from_mongo
 from aeropulse.etl.load.loader import ensure_table, bulk_upsert
+import os
 
-load_dotenv()
 SCHEMA = os.getenv("PG_SCHEMA", "public")
-TABLE = os.getenv("PG_TABLE", "cities_us")
+TABLE = "cities_us"  # <- job-specific; no env
 
 COLUMNS = {
     "city_id": "bigint primary key",
@@ -33,7 +31,7 @@ def main():
             rows=batch,
             conflict_cols=["city_id"],
             update_cols=["name", "state", "country", "lat", "lon"],
-            chunk_size=10000,
+            chunk_size=10_000,
         )
         logger.info(f"Upserted {total} rows so far...")
     logger.info(f"Done. Total upserted: {total}")
