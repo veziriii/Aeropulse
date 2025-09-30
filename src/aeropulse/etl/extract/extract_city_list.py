@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import gzip
 import json
-from utils import setup_logger
+from aeropulse.utils import setup_logger
 
 load_dotenv()
 
@@ -14,15 +14,17 @@ Path(DOWNLOAD_DIR).mkdir(parents=True, exist_ok=True)
 logger = setup_logger("extract_cities.log")
 
 
-def save_bulk_cities_data(url: str = "http://bulk.openweathermap.org/sample/city.list.json.gz"):
+def save_bulk_cities_data(
+    url: str = "http://bulk.openweathermap.org/sample/city.list.json.gz",
+):
     """
     Downloads the gzipped city list (with city names, latitude, longitude)
     and saves to DOWNLOAD_DIR
     Arg:
     url (str): url of bulk city zip file in openweather data source
-    
+
     Returns:
-        file path of the downloaded gzip file 
+        file path of the downloaded gzip file
     """
 
     try:
@@ -34,7 +36,9 @@ def save_bulk_cities_data(url: str = "http://bulk.openweathermap.org/sample/city
             with open(file_path, "wb") as f:
                 f.write(response.content)
 
-            logger.info(f"Successfully downloaded {file_path} ({len(response.content)} bytes)")
+            logger.info(
+                f"Successfully downloaded {file_path} ({len(response.content)} bytes)"
+            )
             return file_path
         else:
             logger.error(f"Failed to download. Status code: {response.status_code}")
@@ -45,13 +49,13 @@ def save_bulk_cities_data(url: str = "http://bulk.openweathermap.org/sample/city
         return None
 
 
-def extract_gzip_to_json(gz_path , json_path = None):
+def extract_gzip_to_json(gz_path, json_path=None):
     """
     Extracts a gzip-compressed JSON file (.gz) into a readable JSON file.
 
     Args:
         gz_path : Path to the .gz file
-        json_path : Path to the returning json file 
+        json_path : Path to the returning json file
                          If None, uses the same name as gz_path but with .json extension.
 
     Returns:
@@ -80,4 +84,3 @@ if __name__ == "__main__":
         logger.info(f"Extracted JSON saved at: {json_file}")
     else:
         logger.error("Download failed. Check logs for details.")
-

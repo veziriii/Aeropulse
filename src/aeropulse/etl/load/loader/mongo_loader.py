@@ -18,7 +18,7 @@ def mongo_client() -> MongoClient:
     if uri:
         return MongoClient(uri)
     else:
-        raise(f"uri for mongo db is not set in .env")
+        raise ValueError("MONGO_URI is not set in .env")
 
 
 def load_json_array_to_mongo(

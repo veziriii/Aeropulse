@@ -4,25 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Aeropulse"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
-authors = [
-  { name = "veziriii", email = "navid.vazirinasab@gmail.com" }
-]
+authors = [{ name = "veziriii"}]
 requires-python = ">=3.10"
 
 dependencies = [
-"requests",
-"python-dotenv",
-"pymongo",
+  "requests",
+  "python-dotenv",
+  "pymongo>=4.6",
+  "SQLAlchemy>=2.0",
+  "psycopg2-binary>=2.9",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0",
+  "pytest-cov",
   "black",
   "isort",
   "mypy",
+  "ruff",
+  "types-requests",
 ]
 
 
@@ -30,4 +33,5 @@ dev = [
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
-where = ["src"] 
+where = ["src"]
+include = ["*"]   # find all subpackages under src

@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from utils import setup_logger, load_json_array_to_mongo
+from aeropulse.utils import setup_logger
+from aeropulse.etl.load.loader import mongo_client, load_json_array_to_mongo
 
 def main():
     load_dotenv()
