@@ -2,6 +2,6 @@
 .env 
 logs/
 data/
-.TODO.tasks
+.todo
 *egg-info/
 __pycache__/
