@@ -66,9 +66,12 @@ def create_indexes(
 ) -> None:
     """
     Ensure simple single-field indexes exist (idempotent).
-    Example: create_indexes(coll, [("h3_res6", 1), ("fetched_at", -1)])
+
+    NOTE: MongoDB auto-creates the _id index; skip it (and it doesn't accept 'background').
     """
     for field, order in specs:
+        if field == "_id":
+            continue  # _id index already exists and is special
         collection.create_index([(field, order)], background=background)
 
 
