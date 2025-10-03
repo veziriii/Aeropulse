@@ -1,107 +1,185 @@
 import os
 import json
-from pathlib import Path
-from typing import List, Dict
-from pymongo import MongoClient, InsertOne
-from pymongo.errors import BulkWriteError
-from dotenv import load_dotenv
-from aeropulse.utils import setup_logger
+import gzip
+from typing import (
+    Iterable,
+    List,
+    Dict,
+    Any,
+    Sequence,
+    Mapping,
+    Optional,
+    Callable,
+    Iterator,
+)
 
-logger = setup_logger("mongo_loader.log")
+from dotenv import load_dotenv
+from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.collection import Collection
+
+load_dotenv()
+
+# ---- Core connection helper (kept simple & stable) -------------------------
 
 
 def mongo_client() -> MongoClient:
-
-    load_dotenv()
+    """
+    Build a MongoClient from env:
+      - MONGO_URI (preferred), e.g. mongodb://user:pass@localhost:27017/Aeropulse
+      - or MONGO_HOST/MONGO_PORT (+ optional MONGO_USER/MONGO_PASS)
+    """
     uri = os.getenv("MONGO_URI")
     if uri:
         return MongoClient(uri)
-    else:
-        raise ValueError("MONGO_URI is not set in .env")
+
+    host = os.getenv("MONGO_HOST", "localhost")
+    port = int(os.getenv("MONGO_PORT", "27017"))
+    user = os.getenv("MONGO_USER")
+    pwd = os.getenv("MONGO_PASS")
+
+    if user and pwd:
+        uri = f"mongodb://{user}:{pwd}@{host}:{port}/"
+        return MongoClient(uri)
+    return MongoClient(host=host, port=port)
+
+
+def _get_db_name() -> str:
+    name = os.getenv("MONGO_DB")
+    if not name:
+        raise RuntimeError("MONGO_DB not set")
+    return name
+
+
+def get_collection(name: str) -> Collection:
+    """Return a handle to a collection under the default DB."""
+    db = mongo_client()[_get_db_name()]
+    return db[name]
+
+
+# ---- Utility helpers used by pipelines -------------------------------------
+
+
+def create_indexes(
+    collection: Collection,
+    specs: Sequence[tuple[str, int]],
+    background: bool = True,
+) -> None:
+    """
+    Ensure simple single-field indexes exist (idempotent).
+
+    NOTE: MongoDB auto-creates the _id index; skip it (and it doesn't accept 'background').
+    """
+    for field, order in specs:
+        if field == "_id":
+            continue  # _id index already exists and is special
+        collection.create_index([(field, order)], background=background)
+
+
+def insert_batch(collection: Collection, docs: Iterable[Mapping[str, Any]]) -> int:
+    """
+    Insert a batch of documents (skips if empty). Returns inserted count.
+    """
+    docs_list = list(docs)
+    if not docs_list:
+        return 0
+    result = collection.insert_many(docs_list)
+    return len(result.inserted_ids)
+
+
+def latest_docs_by_keys(
+    collection: str | Collection,
+    *,
+    key_field: str,
+    keys: Sequence[Any],
+    sort_field: str = "fetched_at",
+) -> Dict[Any, Dict[str, Any]]:
+    """
+    For a set of keys, return the most recent document per key (by sort_field).
+    Uses an aggregation: $match → $sort → $group(first).
+    """
+    coll = (
+        collection if isinstance(collection, Collection) else get_collection(collection)
+    )
+    if not keys:
+        return {}
+
+    pipeline = [
+        {"$match": {key_field: {"$in": list(keys)}}},
+        {"$sort": {key_field: ASCENDING, sort_field: DESCENDING}},
+        {"$group": {"_id": f"${key_field}", "doc": {"$first": "$$ROOT"}}},
+    ]
+
+    out: Dict[Any, Dict[str, Any]] = {}
+    for row in coll.aggregate(pipeline, allowDiskUse=True):
+        out[row["_id"]] = row["doc"]
+    return out
+
+
+# ---- JSON array file → Mongo (no ijson) ------------------------------------
+
+
+def _iter_json_array(file_path: str) -> Iterator[Dict[str, Any]]:
+    """
+    Yield objects from a JSON array file by fully loading it into memory.
+    Supports .gz files by extension.
+    """
+    use_gzip = file_path.endswith(".gz")
+    open_fn = gzip.open if use_gzip else open
+
+    mode = "rt" if use_gzip else "r"
+    with open_fn(file_path, mode, encoding="utf-8") as f:
+        data = json.load(f)
+        if not isinstance(data, list):
+            raise ValueError("Expected a top-level JSON array")
+        for obj in data:
+            if isinstance(obj, dict):
+                yield obj
 
 
 def load_json_array_to_mongo(
-    file_path: str | Path,
+    *,
+    file_path: str,
     collection_name: str,
-    id_field: str,
-    map_id_to__id: bool = True,
-    chunk_size: int = 10_000,
-    continue_on_error: bool = True,
-) -> dict:
+    batch_size: int = 10000,
+    drop_existing: bool = False,
+    transform: Optional[Callable[[Dict[str, Any]], Optional[Dict[str, Any]]]] = None,
+    indexes: Optional[Sequence[tuple[str, int]]] = None,
+) -> int:
     """
-    Load a JSON array file into MongoDB with bulk writes.
+    Load a JSON array file (optionally .gz) into a Mongo collection in batches.
 
-    If `map_id_to__id=True`, a non-empty `id_field` (default "id") is
-    used as `_id` for idempotent loads; otherwise Mongo generates `_id`.
+    Args:
+        file_path: path to JSON file (array) or gzipped JSON (.gz).
+        collection_name: Mongo collection name to load into.
+        batch_size: number of docs per insert_many.
+        drop_existing: if True, drops the collection first.
+        transform: optional function(doc) -> new_doc or None (to filter).
+        indexes: optional list of (field, order) to ensure after load.
+
+    Returns:
+        Total number of inserted documents.
     """
+    coll = get_collection(collection_name)
+    if drop_existing:
+        coll.drop()
 
-    file_path = Path(file_path)
-    client = mongo_client()
+    total = 0
+    batch: List[Dict[str, Any]] = []
 
-    db_name = os.getenv("MONGO_DB")
-    if not db_name:
-        raise ValueError("db_name not provided and MONGO_DB not set in .env")
+    for doc in _iter_json_array(file_path):
+        if transform is not None:
+            doc = transform(doc)
+            if doc is None:
+                continue
+        batch.append(doc)
+        if len(batch) >= batch_size:
+            total += insert_batch(coll, batch)
+            batch = []
 
-    col = client[db_name][collection_name]
-    logger.info(f"Loading {file_path} into {db_name}.{collection_name}")
+    if batch:
+        total += insert_batch(coll, batch)
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        data: List[Dict] = json.load(f)
-        if not isinstance(data, list):
-            raise ValueError("Top-level JSON must be an array.")
+    if indexes:
+        create_indexes(coll, indexes)
 
-    total_read = 0
-    total_inserted = 0
-    total_duplicates = 0
-    total_failed = 0
-
-    def write_batch(batch_ops: List[InsertOne]):
-        nonlocal total_inserted, total_duplicates, total_failed
-        if not batch_ops:
-            return
-        try:
-            res = col.bulk_write(batch_ops, ordered=False)
-            total_inserted += res.inserted_count or 0
-        except BulkWriteError as bwe:
-            errs = bwe.details.get("writeErrors", [])
-            dup = sum(1 for e in errs if e.get("code") == 11000)
-            other = len(errs) - dup
-            total_duplicates += dup
-            total_failed += other
-            if other and not continue_on_error:
-                raise
-            if other:
-                logger.warning(f"{other} non-duplicate errors in a chunk")
-
-    batch_ops: List[InsertOne] = []
-    for doc in data:
-        total_read += 1
-
-        if map_id_to__id and "_id" not in doc:
-            if id_field in doc:
-                raw_id = doc[id_field]
-                if isinstance(raw_id, str):
-                    if raw_id.strip():
-                        doc["_id"] = raw_id
-                elif raw_id is not None:
-                    doc["_id"] = raw_id
-
-        batch_ops.append(InsertOne(doc))
-        if len(batch_ops) >= chunk_size:
-            write_batch(batch_ops)
-            batch_ops = []
-
-    write_batch(batch_ops)
-
-    count_now = col.count_documents({})
-    summary = {
-        "read": total_read,
-        "inserted": total_inserted,
-        "duplicates": total_duplicates,
-        "other_errors": total_failed,
-        "collection_count_now": count_now,
-        "collection": f"{db_name}.{collection_name}",
-        "file": str(file_path),
-    }
-    logger.info(f"Summary: {summary}")
-    return summary
+    return total
