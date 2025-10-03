@@ -17,6 +17,10 @@ dependencies = [
   "psycopg2-binary>=2.9",
   "alembic>=1.13",
   "h3>=3.7",
+  "pandas>=2.2",
+  "pyarrow>=15",
+  "dask[dataframe]>=2024.5.0",
+  "matplotlib",
 ]
 
 [project.optional-dependencies]

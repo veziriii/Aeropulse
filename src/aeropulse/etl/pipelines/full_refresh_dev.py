@@ -3,30 +3,32 @@
 import os
 import subprocess
 import sys
+from aeropulse.utils.logging_config import setup_logger
+from aeropulse.etl.bootstrap_db import bootstrap_db
+
+log = setup_logger(__name__)
 
 
 def run(cmd: list[str], env: dict | None = None):
-    """Run a subprocess step and stream logs."""
     print("+", " ".join(cmd), flush=True)
     subprocess.check_call(cmd, env=env)
 
 
 def main():
-    # 1) Run Alembic migrations
-    run([sys.executable, "-m", "alembic", "upgrade", "head"])
+    # 0) ensure DB schema is ready (no Alembic!)
+    bootstrap_db()
 
-    # 2) Extract city list (optional, only if FORCE_EXTRACT set)
-    force_extract = os.getenv("FORCE_EXTRACT", "false").lower() == "true"
-    city_file = os.path.join("data", "raw_data", "city_list_json.json")
-    if force_extract or not os.path.exists(city_file):
+    # 1) (optional) extract city list if missing
+    city_json = os.path.join("data", "raw_data", "city_list_json.json")
+    force = os.getenv("FORCE_EXTRACT", "false").lower() in {"1", "true", "yes"}
+    if force or not os.path.exists(city_json):
         run([sys.executable, "-m", "aeropulse.etl.extract.extract_city_list"])
     else:
         print(
-            f"= city list present ({os.path.exists(city_file)}), "
-            f"skip extract (FORCE_EXTRACT={force_extract})"
+            f"= city list present ({os.path.exists(city_json)}), skip extract (FORCE_EXTRACT={force})"
         )
 
-    # 3) Raw cities → MongoDB
+    # 2) raw cities -> Mongo
     run(
         [
             sys.executable,
@@ -35,7 +37,7 @@ def main():
         ]
     )
 
-    # 4) Curated cities → Postgres
+    # 3) curated cities -> Postgres
     run(
         [
             sys.executable,
@@ -44,10 +46,10 @@ def main():
         ]
     )
 
-    # 5) Compute H3 indexes & seed weather cells in Postgres
+    # 4) compute H3 for cities & seed weather cells
     run([sys.executable, "-m", "aeropulse.etl.pipelines.populate_weather_cells"])
 
-    # 6) Weather current → Mongo (dev batch size)
+    # 5) fetch current weather raw into Mongo (small dev batch)
     env = os.environ.copy()
     env["WEATHER_UPDATE_BATCH"] = env.get("WEATHER_UPDATE_BATCH", "10")
     run(
@@ -59,7 +61,7 @@ def main():
         env=env,
     )
 
-    # 7) Latest raw weather → curated snapshot in Postgres
+    # 6) latest raw weather -> curated snapshot in Postgres
     run(
         [
             sys.executable,
@@ -68,7 +70,7 @@ def main():
         ]
     )
 
-    # 8) Cleanup old raw weather docs in Mongo (optional in dev)
+    # 7) cleanup old weather raw in Mongo
     run(
         [
             sys.executable,
@@ -77,19 +79,10 @@ def main():
         ]
     )
 
-    # 9) 🔵 OpenSky: fetch live states over US tiles → Mongo (raw)
-    #    Requires: OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET in your .env
-    os_env = os.environ.copy()
-    os_env["OPENSKY_MAX_TILES_PER_RUN"] = os_env.get("OPENSKY_MAX_TILES_PER_RUN", "6")
-    os_env["OPENSKY_SLEEP_BETWEEN_CALLS"] = os_env.get(
-        "OPENSKY_SLEEP_BETWEEN_CALLS", "0.5"
-    )
-    run(
-        [sys.executable, "-m", "aeropulse.etl.extract.opensky.fetch_us_states"],
-        env=os_env,
-    )
+    # 8) OpenSky states (by bounding boxes) -> Mongo
+    run([sys.executable, "-m", "aeropulse.etl.extract.opensky.fetch_us_states"])
 
-    # 10) Optional: cleanup old OpenSky raw snapshots in Mongo
+    # 9) cleanup old OpenSky raw in Mongo
     run(
         [
             sys.executable,
