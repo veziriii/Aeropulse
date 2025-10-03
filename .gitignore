@@ -1,7 +1,23 @@
-.venv/
-.env 
-logs/
-data/
-.todo
-*egg-info/
+# Python
 __pycache__/
+*.pyc
+*.pyo
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# Local env
+.env
+.venv/
+
+# Logs & data (keep sample files tracked if you want)
+log/
+logs/*.log
+data/raw_data/*.json
+data/raw_data/*.gz
+
+# dev artifacts
+tasks.todo
+tree.txt
