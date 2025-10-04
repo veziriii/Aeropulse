@@ -49,7 +49,7 @@ This will create the PostgreSQL schema defined in `bootstrap_schema.sql`.
 
 ---
 
-## 🔄 Pipelines
+##  Pipelines
 
 ### Full Refresh
 Run the complete ETL pipeline:
