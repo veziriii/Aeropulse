@@ -6,7 +6,7 @@ from sqlalchemy import select
 from aeropulse.models.city import City
 from aeropulse.utils.logging_config import setup_logger  # or your get_logger alias
 
-logger = setup_logger(__name__)
+logger = setup_logger("gen_h3_cells.log")
 
 
 # Compatibility wrapper for H3 v3/v4

@@ -1,13 +1,16 @@
 # src/aeropulse/etl/bootstrap_db.py
 
 import logging
+from pathlib import Path
 from sqlalchemy import text
 
 from aeropulse.etl.load.loader.pg_loader import get_engine, masked_dsn_for_log
 from aeropulse.utils.logging_config import setup_logger
 
-logger = setup_logger(__name__)
-log = logging.getLogger(__name__)
+Path("logs").mkdir(parents=True, exist_ok=True)
+
+
+logger = setup_logger("bootstrap.log")
 
 DDL_STATEMENTS = [
     "CREATE SCHEMA IF NOT EXISTS public;",
@@ -62,15 +65,19 @@ DDL_STATEMENTS = [
 ]
 
 
-def bootstrap_db() -> None:
+def bootstrap_db():
     """Idempotently ensure required tables/columns/indexes exist."""
     dsn_masked = masked_dsn_for_log()
-    log.info("Bootstrapping DB at %s", dsn_masked)
+    logger.info("Bootstrapping DB at %s", dsn_masked)
 
     eng = get_engine()
     with eng.begin() as conn:
         for i, ddl in enumerate(DDL_STATEMENTS, 1):
             conn.execute(text(ddl))
-            log.debug("Applied DDL %d/%d", i, len(DDL_STATEMENTS))
+            logger.debug("Applied DDL %d/%d", i, len(DDL_STATEMENTS))
 
-    log.info("DB bootstrap complete.")
+    logger.info("DB bootstrap complete.")
+
+
+if __name__ == "__main__":
+    bootstrap_db()

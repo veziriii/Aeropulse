@@ -17,7 +17,7 @@ from aeropulse.etl.load.loader.mongo_loader import (
     insert_batch,
 )
 
-logger = setup_logger(__name__)
+logger = setup_logger("load_weather_current_to_mongodb.log")
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 

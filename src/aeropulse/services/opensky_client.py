@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from aeropulse.utils.logging_config import setup_logger
 
 load_dotenv()
-logger = setup_logger(__name__)
+logger = setup_logger("OpenSkyClient.log")
 
 OPENSKY_AUTH_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
 OPENSKY_API_BASE = "https://opensky-network.org/api"
