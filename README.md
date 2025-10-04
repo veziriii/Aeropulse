@@ -5,7 +5,7 @@ It uses **PostgreSQL** and **MongoDB** for persistence, and supports exporting c
 
 ---
 
-## 📦 Project Structure
+##  Project Structure
 
 ```
 src/aeropulse
@@ -22,7 +22,7 @@ src/aeropulse
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### 1. Install dependencies
 Make sure you are inside a virtual environment, then:
@@ -75,7 +75,7 @@ python -m aeropulse.etl.pipelines.populate_flight_weather_hits
 
 ---
 
-## 📊 Analytics
+## Analytics
 
 - Export curated data to Parquet:
 ```bash
@@ -89,7 +89,7 @@ python -m aeropulse.analytics.plots.last_hour_weather_mix
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 - **Databases**: PostgreSQL, MongoDB  
 - **Data APIs**: OpenWeather, OpenSky  
@@ -99,7 +99,7 @@ python -m aeropulse.analytics.plots.last_hour_weather_mix
 
 ---
 
-## ⚠️ Notes
+##  Notes
 
 - The pipeline is still under development.  
 - Flight–weather joins depend on OpenSky API availability and can sometimes return empty results.  
